@@ -73,6 +73,43 @@ def retrieve_table(collection, tableid):
     return response
 
 
+def columns_collection(service):
+    try:
+        collection = service.column()
+    except AccessTokenRefreshError:
+        print ("The credentials have been revoked or expired, "
+               "please, re-run the application to re-authorize")
+
+    return collection
+
+
+def list_all_columns(tableid, collection):
+    columns = list()
+    request = collection.list(tableId=tableid)
+    while request != None:
+        response = request.execute()
+        items = response.get(u'items', [])
+        columns.extend(items)
+        request = collection.list_next(request, response)
+
+    return columns
+
+
+def list_columns(tableid, collection, page_token=None, max_results=None):
+    request = collection.list(tableId=tableid, pageToken=page_token, maxResults=max_results)
+    response = request.execute()
+    columns = response.get(u'items', [])
+
+    return columns
+
+
+def retrieve_column(tableid, collection, columnid):
+    request = collection.get(tableId=tableid, columnId=columnid)
+    response = request.execute()
+
+    return response
+
+
 if __name__ == '__main__':
     import pprint
     import json
@@ -94,3 +131,18 @@ if __name__ == '__main__':
     print "Selected Table Id:", tableid
     table = retrieve_table(collection, tableid)
     print json.dumps(table, sort_keys=True, indent=4)
+
+    # Columns
+    collection = columns_collection(service)
+    columns = list_all_columns(tableid, collection)
+    name_to_columnid = {column[u'name']: column[u'columnId'] for column in columns}
+    print
+    print "Mapping of names -> columnIds:"
+    for (name, columnid) in name_to_columnid.iteritems():
+        print "name: {}, columnId: {}".format(name, columnid)
+    # One column happens to be named: "City"
+    columnid = name_to_columnid[u"City"]
+    print
+    print "Selected Column Id:", columnid
+    column = retrieve_column(tableid, collection, columnid)
+    print json.dumps(column, sort_keys=True, indent=4)
